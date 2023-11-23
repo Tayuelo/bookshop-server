@@ -5,8 +5,6 @@ module.exports = async function (fastify, opts) {
   const collection = fastify.mongo.db.collection("users");
   const tokensCollection = fastify.mongo.db.collection("tokens"); // Apply redis
 
-  let refreshTokens = [];
-
   fastify.post("/register", async function (req, rep) {
     const { password } = req.body;
 
@@ -42,7 +40,11 @@ module.exports = async function (fastify, opts) {
           expiresIn: "30s",
           key: process.env.REFRESH_TOKEN_SECRET,
         });
-        refreshTokens.push(refreshToken);
+
+        const result = await tokensCollection.insertOne({
+          token: refreshToken,
+        });
+        console.log(result);
 
         rep.send({ accessToken, refreshToken });
       } else {
@@ -57,18 +59,20 @@ module.exports = async function (fastify, opts) {
     const refreshToken = req.headers["authorization"].split(" ")[1];
     if (refreshToken === null) return rep.status(401).send();
     try {
-      // const token = await tokensCollection.findOne({ value: refreshToken });
-      if (!refreshTokens.includes(refreshToken)) return rep.status(403).send();
+      const token = await tokensCollection.findOne({ token: refreshToken });
 
-      // if (!token) return rep.status(403).send();
+      if (!token) return rep.status(403).send("Token invalid");
 
-      fastify.jwt.verify(refreshToken, { key: process.env.REFRESH_TOKEN_SECRET }, function (err, user) {
-        if (err) return rep.status(403).send(err);
-        const { iat, exp, ...rest } = user;
-        const accessToken = fastify.jwt.sign(rest);
-        rep.send({ accessToken });
-      });
-
+      fastify.jwt.verify(
+        refreshToken,
+        { key: process.env.REFRESH_TOKEN_SECRET },
+        function (err, user) {
+          if (err) return rep.status(403).send(err);
+          const { iat, exp, ...rest } = user;
+          const accessToken = fastify.jwt.sign(rest);
+          rep.send({ accessToken });
+        }
+      );
     } catch (error) {
       rep.status(500).send(error);
     }
