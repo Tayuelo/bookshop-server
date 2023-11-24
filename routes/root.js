@@ -37,7 +37,7 @@ module.exports = async function (fastify, opts) {
       if (result) {
         const accessToken = fastify.jwt.sign(user);
         const refreshToken = fastify.jwt.sign(user, {
-          expiresIn: "30s",
+          expiresIn: "20m",
           key: process.env.REFRESH_TOKEN_SECRET,
         });
 
@@ -48,7 +48,7 @@ module.exports = async function (fastify, opts) {
 
         rep.send({ accessToken, refreshToken });
       } else {
-        rep.status(400).send("Not allowed by else");
+        rep.status(400).send("Wrong credentials");
       }
     } catch (error) {
       rep.status(400).send(error);

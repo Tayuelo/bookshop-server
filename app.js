@@ -12,7 +12,7 @@ module.exports = async function (fastify, opts) {
   fastify.register(require("@fastify/jwt"), {
     secret: process.env.ACCESS_TOKEN_SECRET,
     sign: {
-      expiresIn: '15s',
+      expiresIn: '10m',
     }
   });
 

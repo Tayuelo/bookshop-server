@@ -7,7 +7,7 @@ module.exports = fp(async function (fastify, opts) {
     try {
       await req.jwtVerify();
     } catch (error) {
-      rep.send(error);
+      rep.status(403).send(error);
     }
   });
 });
