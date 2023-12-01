@@ -41,12 +41,7 @@ module.exports = async function (fastify, opts) {
           key: process.env.REFRESH_TOKEN_SECRET,
         });
 
-        const result = await tokensCollection.insertOne({
-          token: refreshToken,
-        });
-        console.log(result);
-
-        rep.send({ accessToken, refreshToken });
+        rep.send({ user: { ...user, accessToken, refreshToken} });
       } else {
         rep.status(400).send("Wrong credentials");
       }
@@ -59,7 +54,7 @@ module.exports = async function (fastify, opts) {
     const refreshToken = req.headers["authorization"].split(" ")[1];
     if (refreshToken === null) return rep.status(401).send();
     try {
-      const token = await tokensCollection.findOne({ token: refreshToken });
+      const token = await tokensCollection.findOne({ token: refreshToken }); // Apply redis
 
       if (!token) return rep.status(403).send("Token invalid");
 
@@ -77,4 +72,23 @@ module.exports = async function (fastify, opts) {
       rep.status(500).send(error);
     }
   });
+
+  fastify.get("/user", async function (req, rep) {
+    const token = req.headers["authorization"].split(" ")[1];
+    if (token === null) return rep.status(401).send();
+
+    try {
+      fastify.jwt.verify(
+        token,
+        { key: process.env.ACCESS_TOKEN_SECRET },
+        function (err, user) {
+          if (err) return rep.status(403).send(err);
+          const { _id, iat, exp, password, ...rest } = user;
+          rep.send({user: rest });
+        }
+      );
+    } catch (error) {
+      
+    }
+  })
 };
