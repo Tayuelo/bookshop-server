@@ -11,7 +11,15 @@ module.exports = async function (fastify, opts) {
     { onRequest: [fastify.authenticate] },
     async function (request, reply) {
       console.log(request.user); // Access the user data
-      const result = await collection.find().toArray();
+      let query = {};
+      const { search } = request.query;
+      if (search) {
+        query = {
+          "author": { "$regex": search}
+        }
+      }
+
+      const result = await collection.find(query).toArray();
       return result;
     }
   );
