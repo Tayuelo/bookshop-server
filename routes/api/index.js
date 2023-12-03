@@ -15,7 +15,7 @@ module.exports = async function (fastify, opts) {
       const { search } = request.query;
       if (search) {
         query = {
-          "author": { "$regex": search}
+          "name": { "$regex": search }
         }
       }
 

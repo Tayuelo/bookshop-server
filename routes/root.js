@@ -88,7 +88,7 @@ module.exports = async function (fastify, opts) {
         }
       );
     } catch (error) {
-      
+      rep.status(401).send(error);
     }
   })
 };
