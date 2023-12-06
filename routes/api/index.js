@@ -15,8 +15,8 @@ module.exports = async function (fastify, opts) {
       const { search } = request.query;
       if (search) {
         query = {
-          "name": { "$regex": search }
-        }
+          name: { $regex: search },
+        };
       }
 
       const result = await collection.find(query).toArray();
@@ -24,12 +24,16 @@ module.exports = async function (fastify, opts) {
     }
   );
 
-  fastify.get("/books/:id", async function (req, rep) {
-    const result = await collection.findOne({
-      _id: new ObjectId(req.params.id),
-    });
-    return result;
-  });
+  fastify.get(
+    "/books/:id",
+    { onRequest: [fastify.authenticate] },
+    async function (req, rep) {
+      const result = await collection.findOne({
+        _id: new ObjectId(req.params.id),
+      });
+      return result;
+    }
+  );
 
   fastify.post(
     "/books",
