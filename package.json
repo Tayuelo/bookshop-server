@@ -20,6 +20,7 @@
     "@fastify/cors": "^8.4.1",
     "@fastify/jwt": "^7.2.4",
     "@fastify/mongodb": "^8.0.0",
+    "@fastify/redis": "^6.1.1",
     "@fastify/sensible": "^5.0.0",
     "bcrypt": "^5.1.1",
     "dotenv": "^16.3.1",

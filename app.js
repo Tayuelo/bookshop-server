@@ -16,6 +16,13 @@ module.exports = async function (fastify, opts) {
     }
   });
 
+  fastify.register(require("@fastify/redis"), {
+    host: process.env.REDIS_URL,
+    password: process.env.REDIS_PASS,
+    port: 19585,
+    family: 4
+  });
+
   fastify.register(cors);
 
   fastify.register(AutoLoad, {

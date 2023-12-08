@@ -3,7 +3,6 @@ const bcrypt = require("bcrypt");
 
 module.exports = async function (fastify, opts) {
   const collection = fastify.mongo.db.collection("users");
-  const tokensCollection = fastify.mongo.db.collection("tokens"); // Apply redis
 
   fastify.post("/register", async function (req, rep) {
     const { password } = req.body;
@@ -33,6 +32,7 @@ module.exports = async function (fastify, opts) {
     }
 
     try {
+      const { redis } = fastify;
       const result = await bcrypt.compare(req.body.password, user.password);
       if (result) {
         const accessToken = fastify.jwt.sign(user);
@@ -41,7 +41,9 @@ module.exports = async function (fastify, opts) {
           key: process.env.REFRESH_TOKEN_SECRET,
         });
 
-        rep.send({ user: { ...user, accessToken, refreshToken} });
+        await redis.set(`rt:${user.email}`, refreshToken);
+
+        rep.send({ user: { ...user, accessToken, refreshToken } });
       } else {
         rep.status(400).send("Wrong credentials");
       }
@@ -52,24 +54,36 @@ module.exports = async function (fastify, opts) {
 
   fastify.post("/token", async function (req, rep) {
     const refreshToken = req.headers["authorization"].split(" ")[1];
-    if (refreshToken === null) return rep.status(401).send();
+
+    if (refreshToken === null) return rep.status(401).send("Missing Token");
+
     try {
-      const token = await tokensCollection.findOne({ token: refreshToken }); // Apply redis
+      const { redis } = fastify;
+      const token = await redis.get(`rt:${req.body.email}`);
 
       if (!token) return rep.status(403).send("Token invalid");
 
-      fastify.jwt.verify(
+      await redis.del(`rt:${req.body.email}`);
+
+      await fastify.jwt.verify(
         refreshToken,
         { key: process.env.REFRESH_TOKEN_SECRET },
-        function (err, user) {
+        async function (err, user) {
           if (err) return rep.status(403).send(err);
           const { iat, exp, ...rest } = user;
           const accessToken = fastify.jwt.sign(rest);
-          rep.send({ accessToken });
+          const refreshToken = fastify.jwt.sign(rest, {
+            expiresIn: "20m",
+            key: process.env.REFRESH_TOKEN_SECRET,
+          });
+
+          await redis.set(`rt:${req.body.email}`, refreshToken);
+
+          return rep.status(201).send({ accessToken, refreshToken });
         }
       );
     } catch (error) {
-      rep.status(500).send(error);
+      return rep.status(500).send(error);
     }
   });
 
@@ -84,11 +98,11 @@ module.exports = async function (fastify, opts) {
         function (err, user) {
           if (err) return rep.status(403).send(err);
           const { _id, iat, exp, password, ...rest } = user;
-          rep.send({user: rest });
+          rep.send({ user: rest });
         }
       );
     } catch (error) {
       rep.status(401).send(error);
     }
-  })
+  });
 };
